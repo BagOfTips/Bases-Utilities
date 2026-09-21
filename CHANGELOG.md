@@ -12,3 +12,4 @@ Initial public release.
 - Display a filter indicator on the active search column.
 - Keep pagination controls stable while resizing table columns.
 - Keep pagination buttons free of hover tooltips.
+- Keep pagination controls visible whenever the native result limit is active.

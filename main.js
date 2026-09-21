@@ -875,7 +875,7 @@ class NativeBasesUtilities {
       window.requestAnimationFrame(() => this.controller?.requestNotifyView?.());
     }
 
-    this.setControlsVisible(this.pageCount > 1);
+    this.setControlsVisible(true);
     this.updateControls();
   }
 
