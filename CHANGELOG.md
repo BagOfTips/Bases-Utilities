@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0
+## 1.0.0
 
 Initial public release.
 
@@ -10,6 +10,6 @@ Initial public release.
 - Search individual table columns from a left click or native context menu.
 - Suggest existing scalar and individual list values while searching.
 - Display a filter indicator on the active search column.
-- Keep pagination controls stable while resizing table columns.
-- Keep pagination buttons free of hover tooltips.
+- Keep pagination controls outside native view content so column resizing cannot remove them.
+- Keep pagination controls accessible without showing hover tooltips.
 - Keep pagination controls visible whenever the native result limit is active.

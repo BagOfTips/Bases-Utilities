@@ -1,6 +1,6 @@
 {
   "name": "bases-utilities",
-  "version": "0.7.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Development checks for the Bases Utilities Obsidian plugin.",
   "scripts": {

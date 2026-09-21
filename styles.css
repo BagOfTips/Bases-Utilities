@@ -28,8 +28,8 @@
 }
 
 .bases-utilities-controls {
+  --bases-utilities-control-height: 32px;
   align-items: center;
-  border-top: var(--border-width) solid var(--background-modifier-border);
   color: var(--text-muted);
   display: flex;
   flex: 0 0 auto;
@@ -40,7 +40,12 @@
 }
 
 .bases-utilities-controls.mod-top {
-  border-bottom: var(--border-width) solid var(--background-modifier-border);
+  border: var(--border-width) solid var(--background-modifier-border);
+  border-bottom: 0;
+}
+
+.bases-utilities-controls.mod-bottom {
+  border: var(--border-width) solid var(--background-modifier-border);
   border-top: 0;
 }
 
@@ -55,6 +60,16 @@
 .bases-utilities-button:disabled {
   cursor: default;
   opacity: 0.35;
+}
+
+.bases-utilities-visually-hidden {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
 .bases-utilities-status {

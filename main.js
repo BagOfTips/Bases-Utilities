@@ -349,8 +349,7 @@ class NativeBasesUtilities {
     });
 
     this.controlBars = [this.createControls("top"), this.createControls("bottom")];
-    this.root.prepend(this.controlBars[0].element);
-    this.root.appendChild(this.controlBars[1].element);
+    this.ensureControlsAttached();
     this.root.addClass("bases-utilities-bound");
     this.host = this.root.closest(".bases-embed, .block-language-base");
     this.host?.addClass("bases-utilities-host");
@@ -369,7 +368,6 @@ class NativeBasesUtilities {
   createControls(location) {
     const controls = document.createElement("nav");
     controls.className = `bases-utilities-controls mod-${location}`;
-    controls.setAttribute("aria-label", "Base pagination");
 
     const firstButton = this.createButton("chevrons-left", "First page", () => {
       this.goToPage(0, true);
@@ -411,8 +409,11 @@ class NativeBasesUtilities {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "clickable-icon bases-utilities-button";
-    button.setAttribute("aria-label", label);
     setIcon(button, icon);
+    const accessibleLabel = document.createElement("span");
+    accessibleLabel.className = "bases-utilities-visually-hidden";
+    accessibleLabel.setText(label);
+    button.appendChild(accessibleLabel);
     button.addEventListener("click", handler);
     return button;
   }
@@ -895,12 +896,14 @@ class NativeBasesUtilities {
   }
 
   ensureControlsAttached() {
+    const parent = this.root.parentElement;
+    if (!parent) return;
     const [top, bottom] = this.controlBars;
-    if (top.element.parentElement !== this.root || this.root.firstElementChild !== top.element) {
-      this.root.prepend(top.element);
+    if (top.element.parentElement !== parent || top.element.nextElementSibling !== this.root) {
+      parent.insertBefore(top.element, this.root);
     }
-    if (bottom.element.parentElement !== this.root || this.root.lastElementChild !== bottom.element) {
-      this.root.appendChild(bottom.element);
+    if (bottom.element.parentElement !== parent || bottom.element.previousElementSibling !== this.root) {
+      parent.insertBefore(bottom.element, this.root.nextSibling);
     }
   }
 
