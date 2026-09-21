@@ -10,6 +10,7 @@ Bases Utilities adds pagination, column search, and focused quality-of-life impr
 - Place pagination controls at the top, bottom, or both.
 - Search an individual table column from its header.
 - Get matching suggestions from values already present in the column.
+- Assign a template or command to the native **New** button for each Base.
 - Keep the native Bases toolbar, filters, sorting, grouping, editing, and rendering.
 
 ## Pagination
@@ -34,3 +35,13 @@ As you type, the popup suggests values present in the column. The first match is
 The active column displays a filter icon until the search is cleared.
 
 Column search on left click is enabled by default. Disable **Open column search on left click** to restore native left-click sorting. **Search this column** remains available in the header's right-click menu.
+
+## New note actions
+
+The native **New** button works normally until you assign an action. Right-click **New** to choose from these options:
+
+- **Choose a template** lists Markdown files in the vault. Bases creates the note normally, preserving properties derived from the Base, and then adds missing template properties and template content.
+- **Assign a command** lists available commands, including commands registered by other plugins. Selecting one makes **New** run that command instead of the native creation action.
+- **Use native New behavior** clears the assignment for that Base.
+
+You can also clear the assignment from the first entry in either picker. Template variables for `{{title}}`, `{{date}}`, `{{time}}`, and custom date or time formats are supported.

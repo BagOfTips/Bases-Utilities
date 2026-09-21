@@ -1,9 +1,9 @@
 {
   "id": "bases-utilities",
   "name": "Bases Utilities",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "minAppVersion": "1.13.0",
-  "description": "Add pagination, column search, and quality-of-life enhancements to native Bases.",
+  "description": "Add pagination, column searching, and other quality-of-life enhancements to native Bases.",
   "author": "Bag of Tips",
   "isDesktopOnly": false
 }

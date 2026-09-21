@@ -1,14 +1,19 @@
 const {
+  FuzzySuggestModal,
   Menu,
   Notice,
   Plugin: ObsidianPlugin,
   PluginSettingTab,
+  TFile,
+  moment,
+  parseYaml,
   setIcon,
 } = require("obsidian"); // eslint-disable-line @typescript-eslint/no-require-imports -- Obsidian loads release bundles as CommonJS.
 
 const DEFAULT_SETTINGS = {
   controlPosition: "top",
   leftClickColumnSearch: true,
+  newButtonActions: {},
 };
 
 const VIEW_SELECTOR = ".bases-view";
@@ -20,6 +25,9 @@ const VISIBLE_TABLE_ROW_CLASS = "bases-utilities-table-page-row";
 module.exports = class BasesUtilitiesPlugin extends ObsidianPlugin {
   async onload() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    if (!this.settings.newButtonActions || typeof this.settings.newButtonActions !== "object") {
+      this.settings.newButtonActions = {};
+    }
     delete this.settings.showSinglePage;
     this.pagers = new Map();
     this.paginatedConfigs = new WeakSet();
@@ -30,7 +38,10 @@ module.exports = class BasesUtilitiesPlugin extends ObsidianPlugin {
     this.originalApplyLimit = null;
     this.refreshFrame = 0;
     this.pendingHeaderMenu = null;
+    this.pendingTemplateCreation = null;
+    this.pendingTemplateApplyTimer = 0;
     this.installMenuHook();
+    this.registerEvent(this.app.vault.on("create", (file) => this.onFileCreated(file)));
 
     this.addSettingTab(new BasesUtilitiesSettingTab(this.app, this));
 
@@ -287,8 +298,171 @@ module.exports = class BasesUtilitiesPlugin extends ObsidianPlugin {
     for (const pager of this.pagers.values()) pager.applySettings();
   }
 
+  async setNewButtonAction(key, action) {
+    const newButtonActions = Object.assign({}, this.settings.newButtonActions);
+    if (action) newButtonActions[key] = action;
+    else delete newButtonActions[key];
+    await this.updateSettings({ newButtonActions });
+  }
+
+  resetNewButtonAction(pager) {
+    const key = pager.getBaseActionKey();
+    if (!key) {
+      new Notice("Could not identify this base.");
+      return;
+    }
+    this.setNewButtonAction(key, null)
+      .then(() => new Notice("Native base new behavior restored."))
+      .catch(() => new Notice("Could not restore native new behavior."));
+  }
+
+  openTemplatePicker(pager) {
+    const key = pager.getBaseActionKey();
+    if (!key) {
+      new Notice("Could not identify this base.");
+      return;
+    }
+    const files = this.app.vault.getMarkdownFiles().sort((left, right) =>
+      left.path.localeCompare(right.path, undefined, { numeric: true, sensitivity: "base" })
+    );
+    if (!files.length) {
+      new Notice("No Markdown files are available to use as templates.");
+      return;
+    }
+    new TemplateFileSuggestModal(this.app, files, async (file) => {
+      if (!file) {
+        await this.setNewButtonAction(key, null);
+        new Notice("Native base new behavior restored.");
+        return;
+      }
+      await this.setNewButtonAction(key, { type: "template", templatePath: file.path });
+      new Notice(`New notes will use ${file.basename}.`);
+    }).open();
+  }
+
+  openCommandPicker(pager) {
+    const key = pager.getBaseActionKey();
+    if (!key) {
+      new Notice("Could not identify this base.");
+      return;
+    }
+    const commands = (this.app.commands?.listCommands?.() || []).filter(
+      (command) => command?.id && command?.name
+    );
+    if (!commands.length) {
+      new Notice("No commands are available.");
+      return;
+    }
+    commands.sort((left, right) =>
+      left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: "base" })
+    );
+    new CommandSuggestModal(this.app, commands, async (command) => {
+      if (!command) {
+        await this.setNewButtonAction(key, null);
+        new Notice("Native base new behavior restored.");
+        return;
+      }
+      await this.setNewButtonAction(key, {
+        type: "command",
+        commandId: command.id,
+        commandName: command.name,
+      });
+      new Notice(`New will run ${command.name}.`);
+    }).open();
+  }
+
+  runAssignedCommand(action) {
+    const executed = this.app.commands?.executeCommandById?.(action.commandId);
+    if (!executed) new Notice(`Command unavailable: ${action.commandName || action.commandId}`);
+  }
+
+  armTemplateForNextCreatedFile(templatePath) {
+    const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
+    if (!(templateFile instanceof TFile)) {
+      new Notice("The assigned template could not be found. Native new will be used.");
+      return false;
+    }
+    this.clearPendingTemplateCreation();
+    const timer = window.setTimeout(() => this.clearPendingTemplateCreation(), 120000);
+    this.pendingTemplateCreation = { templatePath, timer };
+    return true;
+  }
+
+  clearPendingTemplateCreation() {
+    if (!this.pendingTemplateCreation) return;
+    window.clearTimeout(this.pendingTemplateCreation.timer);
+    this.pendingTemplateCreation = null;
+  }
+
+  onFileCreated(file) {
+    const pending = this.pendingTemplateCreation;
+    if (!pending || !(file instanceof TFile) || file.extension !== "md") return;
+    this.clearPendingTemplateCreation();
+    window.clearTimeout(this.pendingTemplateApplyTimer);
+    this.pendingTemplateApplyTimer = window.setTimeout(() => {
+      this.pendingTemplateApplyTimer = 0;
+      this.applyTemplateToFile(file, pending.templatePath).catch(() => {
+        new Notice("The note was created, but its template could not be applied.");
+      });
+    }, 200);
+  }
+
+  async applyTemplateToFile(file, templatePath) {
+    const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
+    if (!(templateFile instanceof TFile) || templateFile.path === file.path) return;
+    const source = await this.app.vault.cachedRead(templateFile);
+    const rendered = this.renderTemplateVariables(source, file.basename);
+    const { frontmatter, body } = this.extractTemplateParts(rendered);
+
+    if (frontmatter && Object.keys(frontmatter).length) {
+      await this.app.fileManager.processFrontMatter(file, (properties) => {
+        for (const [key, value] of Object.entries(frontmatter)) {
+          if (properties[key] === undefined) properties[key] = value;
+        }
+      });
+    }
+
+    const templateBody = body.trim();
+    if (!templateBody) return;
+    await this.app.vault.process(file, (content) => {
+      const separator = content && !content.endsWith("\n") ? "\n\n" : content ? "\n" : "";
+      return `${content}${separator}${templateBody}\n`;
+    });
+  }
+
+  extractTemplateParts(content) {
+    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+    if (!match) return { frontmatter: null, body: content };
+    try {
+      const frontmatter = parseYaml(match[1]);
+      return {
+        frontmatter:
+          frontmatter && typeof frontmatter === "object" && !Array.isArray(frontmatter)
+            ? frontmatter
+            : null,
+        body: content.slice(match[0].length),
+      };
+    } catch {
+      return { frontmatter: null, body: content.slice(match[0].length) };
+    }
+  }
+
+  renderTemplateVariables(content, title) {
+    const now = moment();
+    return content
+      .replace(/\{\{title\}\}/gi, title)
+      .replace(/\{\{date(?::([^}]+))?\}\}/gi, (_match, format) =>
+        now.format(format || "YYYY-MM-DD")
+      )
+      .replace(/\{\{time(?::([^}]+))?\}\}/gi, (_match, format) =>
+        now.format(format || "HH:mm")
+      );
+  }
+
   onunload() {
     this.clearPendingHeaderMenu();
+    this.clearPendingTemplateCreation();
+    window.clearTimeout(this.pendingTemplateApplyTimer);
     if (
       this.menuPrototype &&
       this.menuPrototype.showAtPosition === this.wrappedMenuShowAtPosition
@@ -331,6 +505,9 @@ class NativeBasesUtilities {
     this.headerPointerDownHandler = (event) => this.onHeaderPointerDown(event);
     this.headerPointerMoveHandler = (event) => this.onHeaderPointerMove(event);
     this.columnResizeEndHandler = () => this.onColumnResizeEnd();
+    this.newButtonClickHandler = (event) => this.onNewButtonClick(event);
+    this.newButtonContextMenuHandler = (event) => this.onNewButtonContextMenu(event);
+    this.newButtonHost = null;
     this.root.addEventListener("click", this.headerClickHandler, { capture: true });
     this.root.addEventListener("contextmenu", this.headerContextMenuHandler, {
       capture: true,
@@ -421,6 +598,101 @@ class NativeBasesUtilities {
   applySettings() {
     if (!this.plugin.settings.leftClickColumnSearch) this.closeSearchPopup();
     this.scheduleUpdate();
+  }
+
+  bindNewButtonHost(host) {
+    if (this.newButtonHost === host) return;
+    if (this.newButtonHost) {
+      this.newButtonHost.removeEventListener("click", this.newButtonClickHandler, {
+        capture: true,
+      });
+      this.newButtonHost.removeEventListener("contextmenu", this.newButtonContextMenuHandler, {
+        capture: true,
+      });
+    }
+    this.newButtonHost = host;
+    if (!host) return;
+    host.addEventListener("click", this.newButtonClickHandler, { capture: true });
+    host.addEventListener("contextmenu", this.newButtonContextMenuHandler, {
+      capture: true,
+    });
+  }
+
+  getNativeNewButton(target) {
+    if (!target || typeof target.closest !== "function" || !this.newButtonHost) return null;
+    const button = target.closest(
+      "button, [role='button'], .clickable-icon, .bases-toolbar-item, .bases-toolbar-menu-item"
+    );
+    if (!button || !this.newButtonHost.contains(button) || this.root.contains(button)) return null;
+    if (this.controlBars.some((controls) => controls.element.contains(button))) return null;
+    const label = `${button.getAttribute("aria-label") || ""} ${button.getAttribute("title") || ""} ${button.textContent || ""}`
+      .trim()
+      .toLocaleLowerCase();
+    const hasPlusIcon = Boolean(
+      button.querySelector("svg.lucide-plus, svg[data-lucide='plus'], .lucide-plus")
+    );
+    return label === "new" || label.endsWith(" new") || hasPlusIcon ? button : null;
+  }
+
+  onNewButtonContextMenu(event) {
+    if (!this.getNativeNewButton(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    const menu = new Menu();
+    menu.addItem((item) =>
+      item
+        .setTitle("Choose a template")
+        .setIcon("file-text")
+        .onClick(() => this.plugin.openTemplatePicker(this))
+    );
+    menu.addItem((item) =>
+      item
+        .setTitle("Assign a command")
+        .setIcon("terminal")
+        .onClick(() => this.plugin.openCommandPicker(this))
+    );
+    menu.addSeparator();
+    menu.addItem((item) =>
+      item
+        .setTitle("Use native new behavior")
+        .setIcon("rotate-ccw")
+        .onClick(() => this.plugin.resetNewButtonAction(this))
+    );
+    menu.showAtMouseEvent(event);
+  }
+
+  onNewButtonClick(event) {
+    if (event.button !== 0 || !this.getNativeNewButton(event.target)) return;
+    const key = this.getBaseActionKey();
+    const action = key ? this.plugin.settings.newButtonActions[key] : null;
+    if (!action) return;
+    if (action.type === "command") {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      this.plugin.runAssignedCommand(action);
+    } else if (action.type === "template") {
+      this.plugin.armTemplateForNextCreatedFile(action.templatePath);
+    }
+  }
+
+  getBaseActionKey() {
+    let matchingLeaf = null;
+    this.plugin.app.workspace.iterateAllLeaves((leaf) => {
+      if (!matchingLeaf && leaf?.view?.containerEl?.contains(this.root)) matchingLeaf = leaf;
+    });
+    const container = matchingLeaf?.view?.containerEl || this.newButtonHost;
+    const roots = container ? Array.from(container.querySelectorAll(VIEW_SELECTOR)) : [this.root];
+    const index = Math.max(0, roots.indexOf(this.root));
+    const filePath = matchingLeaf?.view?.file?.path || matchingLeaf?.view?.getViewType?.() || "base";
+    let viewName = "";
+    try {
+      viewName = String(this.viewConfig?.getName?.() || this.viewConfig?.name || "");
+    } catch {
+      viewName = "";
+    }
+    return `${filePath}::${viewName || index}`;
   }
 
   getHeaderContext(target) {
@@ -876,7 +1148,7 @@ class NativeBasesUtilities {
       window.requestAnimationFrame(() => this.controller?.requestNotifyView?.());
     }
 
-    this.setControlsVisible(true);
+    this.setControlsVisible(this.pageCount > 1);
     this.updateControls();
   }
 
@@ -898,6 +1170,11 @@ class NativeBasesUtilities {
   ensureControlsAttached() {
     const parent = this.root.parentElement;
     if (!parent) return;
+    this.bindNewButtonHost(
+      this.root.closest(
+        ".bases-embed, .block-language-base, .workspace-leaf-content, .workspace-leaf"
+      ) || parent
+    );
     const [top, bottom] = this.controlBars;
     if (top.element.parentElement !== parent || top.element.nextElementSibling !== this.root) {
       parent.insertBefore(top.element, this.root);
@@ -1151,6 +1428,7 @@ class NativeBasesUtilities {
     this.root.ownerDocument.removeEventListener("pointercancel", this.columnResizeEndHandler, {
       capture: true,
     });
+    this.bindNewButtonHost(null);
     for (const header of this.root.querySelectorAll(".bases-utilities-column-search-active")) {
       header.removeClass("bases-utilities-column-search-active");
       header.querySelector(".bases-utilities-column-search-indicator")?.remove();
@@ -1203,5 +1481,47 @@ class BasesUtilitiesSettingTab extends PluginSettingTab {
 
   async setControlValue(key, value) {
     await this.plugin.updateSettings({ [key]: value });
+  }
+}
+
+class TemplateFileSuggestModal extends FuzzySuggestModal {
+  constructor(app, files, onChoose) {
+    super(app);
+    this.files = files;
+    this.onChoose = onChoose;
+    this.setPlaceholder("Choose a template or restore native behavior");
+  }
+
+  getItems() {
+    return [null, ...this.files];
+  }
+
+  getItemText(file) {
+    return file ? file.path : "Use native New behavior";
+  }
+
+  onChooseItem(file) {
+    void this.onChoose(file);
+  }
+}
+
+class CommandSuggestModal extends FuzzySuggestModal {
+  constructor(app, commands, onChoose) {
+    super(app);
+    this.commands = commands;
+    this.onChoose = onChoose;
+    this.setPlaceholder("Choose a command or restore native behavior");
+  }
+
+  getItems() {
+    return [null, ...this.commands];
+  }
+
+  getItemText(command) {
+    return command ? command.name : "Use native New behavior";
+  }
+
+  onChooseItem(command) {
+    void this.onChoose(command);
   }
 }
