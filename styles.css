@@ -1,11 +1,11 @@
-.bases-utilities-hidden,
-.bases-utilities-empty-group {
-  display: none !important;
+.bases-view .bases-utilities-hidden,
+.bases-view .bases-utilities-empty-group {
+  display: none;
 }
 
-.bases-utilities-table-row-hidden {
-  pointer-events: none !important;
-  visibility: hidden !important;
+.bases-view .bases-utilities-table-row-hidden {
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .bases-utilities-table-page-row {
@@ -17,14 +17,15 @@
 }
 
 .bases-view.bases-utilities-bound.bases-utilities-table-limited {
-  flex-grow: 0 !important;
-  height: auto !important;
-  min-height: 0 !important;
+  flex-grow: 0;
+  height: auto;
+  min-height: 0;
 }
 
-.bases-utilities-host {
-  height: auto !important;
-  min-height: 0 !important;
+.bases-embed.bases-utilities-host,
+.block-language-base.bases-utilities-host {
+  height: auto;
+  min-height: 0;
 }
 
 .bases-utilities-controls {
@@ -63,8 +64,7 @@
 }
 
 .bases-utilities-visually-hidden {
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
+  clip: rect(0, 0, 0, 0);
   height: 1px;
   overflow: hidden;
   position: absolute;
@@ -135,9 +135,9 @@
   width: var(--icon-s);
 }
 
-.bases-utilities-search-input {
-  padding-left: calc(var(--icon-s) + var(--size-4-3)) !important;
-  padding-right: calc(var(--icon-s) + var(--size-4-3)) !important;
+.bases-utilities-search-popover .bases-utilities-search-input {
+  padding-left: calc(var(--icon-s) + var(--size-4-3));
+  padding-right: calc(var(--icon-s) + var(--size-4-3));
   width: 100%;
 }
 
@@ -184,12 +184,12 @@
   background: var(--background-modifier-hover);
 }
 
-.bases-view.bases-utilities-table-limited .bases-table-container {
+.bases-view.bases-utilities-bound.bases-utilities-table-limited .bases-table-container {
   flex: 0 1 auto;
-  height: var(--bases-utilities-table-height) !important;
-  max-height: var(--bases-utilities-table-height) !important;
-  min-height: 0 !important;
-  overflow-y: hidden !important;
+  height: var(--bases-utilities-table-height);
+  max-height: var(--bases-utilities-table-height);
+  min-height: 0;
+  overflow-y: hidden;
 }
 
 @media (max-width: 600px) {
