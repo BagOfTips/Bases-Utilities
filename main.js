@@ -322,10 +322,14 @@ class NativeBasesUtilities {
     this.searchPopup = null;
     this.searchTimer = 0;
     this.isColumnResizing = false;
+    this.columnResizeEndTimer = 0;
+    this.headerPointerStart = null;
+    this.didDragHeader = false;
 
     this.headerClickHandler = (event) => this.onHeaderClick(event);
     this.headerContextMenuHandler = (event) => this.onHeaderContextMenu(event);
     this.headerPointerDownHandler = (event) => this.onHeaderPointerDown(event);
+    this.headerPointerMoveHandler = (event) => this.onHeaderPointerMove(event);
     this.columnResizeEndHandler = () => this.onColumnResizeEnd();
     this.root.addEventListener("click", this.headerClickHandler, { capture: true });
     this.root.addEventListener("contextmenu", this.headerContextMenuHandler, {
@@ -335,6 +339,9 @@ class NativeBasesUtilities {
       capture: true,
     });
     this.root.ownerDocument.addEventListener("pointerup", this.columnResizeEndHandler, {
+      capture: true,
+    });
+    this.root.ownerDocument.addEventListener("pointermove", this.headerPointerMoveHandler, {
       capture: true,
     });
     this.root.ownerDocument.addEventListener("pointercancel", this.columnResizeEndHandler, {
@@ -405,7 +412,6 @@ class NativeBasesUtilities {
     button.type = "button";
     button.className = "clickable-icon bases-utilities-button";
     button.setAttribute("aria-label", label);
-    button.setAttribute("data-tooltip-position", "top");
     setIcon(button, icon);
     button.addEventListener("click", handler);
     return button;
@@ -447,7 +453,7 @@ class NativeBasesUtilities {
 
   onHeaderClick(event) {
     if (!this.plugin.settings.leftClickColumnSearch || event.button !== 0) return;
-    if (event.target?.closest?.(".bases-table-header-resizer")) {
+    if (this.didDragHeader || event.target?.closest?.(".bases-table-header-resizer")) {
       return;
     }
     const context = this.getHeaderContext(event.target);
@@ -460,16 +466,37 @@ class NativeBasesUtilities {
   }
 
   onHeaderPointerDown(event) {
-    if (!event.target?.closest?.(".bases-table-header-resizer")) return;
+    const header = event.target?.closest?.(".bases-thead .bases-td");
+    if (!header || !this.root.contains(header)) return;
+    window.clearTimeout(this.columnResizeEndTimer);
+    this.columnResizeEndTimer = 0;
     this.isColumnResizing = true;
+    this.headerPointerStart = { x: event.clientX, y: event.clientY };
+    this.didDragHeader = false;
     window.cancelAnimationFrame(this.updateFrame);
     this.updateFrame = 0;
   }
 
+  onHeaderPointerMove(event) {
+    if (!this.headerPointerStart) return;
+    if (
+      Math.abs(event.clientX - this.headerPointerStart.x) > 3 ||
+      Math.abs(event.clientY - this.headerPointerStart.y) > 3
+    ) {
+      this.didDragHeader = true;
+    }
+  }
+
   onColumnResizeEnd() {
     if (!this.isColumnResizing) return;
-    this.isColumnResizing = false;
-    this.scheduleUpdate();
+    this.headerPointerStart = null;
+    window.clearTimeout(this.columnResizeEndTimer);
+    this.columnResizeEndTimer = window.setTimeout(() => {
+      this.columnResizeEndTimer = 0;
+      this.isColumnResizing = false;
+      this.didDragHeader = false;
+      this.scheduleUpdate();
+    }, 150);
   }
 
   onHeaderContextMenu(event) {
@@ -1103,6 +1130,7 @@ class NativeBasesUtilities {
     this.observer.disconnect();
     window.cancelAnimationFrame(this.updateFrame);
     window.clearTimeout(this.searchTimer);
+    window.clearTimeout(this.columnResizeEndTimer);
     this.closeSearchPopup();
     this.root.removeEventListener("click", this.headerClickHandler, { capture: true });
     this.root.removeEventListener("contextmenu", this.headerContextMenuHandler, {
@@ -1112,6 +1140,9 @@ class NativeBasesUtilities {
       capture: true,
     });
     this.root.ownerDocument.removeEventListener("pointerup", this.columnResizeEndHandler, {
+      capture: true,
+    });
+    this.root.ownerDocument.removeEventListener("pointermove", this.headerPointerMoveHandler, {
       capture: true,
     });
     this.root.ownerDocument.removeEventListener("pointercancel", this.columnResizeEndHandler, {

@@ -11,3 +11,4 @@ Initial public release.
 - Suggest existing scalar and individual list values while searching.
 - Display a filter indicator on the active search column.
 - Keep pagination controls stable while resizing table columns.
+- Keep pagination buttons free of hover tooltips.
