@@ -1,0 +1,9 @@
+{
+  "id": "bases-utilities",
+  "name": "Bases Utilities",
+  "version": "0.7.0",
+  "minAppVersion": "1.13.0",
+  "description": "Add pagination, column search, and quality-of-life enhancements to native Obsidian Bases.",
+  "author": "Bag of Tips",
+  "isDesktopOnly": false
+}

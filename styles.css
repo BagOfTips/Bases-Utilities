@@ -1,0 +1,188 @@
+.bases-utilities-hidden,
+.bases-utilities-empty-group {
+  display: none !important;
+}
+
+.bases-utilities-table-row-hidden {
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+.bases-utilities-table-page-row {
+  translate: 0 var(--bases-utilities-row-offset, 0);
+}
+
+.bases-view.bases-utilities-bound {
+  --bases-utilities-control-height: 32px;
+}
+
+.bases-view.bases-utilities-bound.bases-utilities-table-limited {
+  flex-grow: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.bases-utilities-host {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.bases-utilities-controls {
+  align-items: center;
+  border-top: var(--border-width) solid var(--background-modifier-border);
+  color: var(--text-muted);
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--size-2-1);
+  justify-content: center;
+  min-height: var(--bases-utilities-control-height);
+  padding: var(--size-2-2) var(--size-4-2);
+}
+
+.bases-utilities-controls.mod-top {
+  border-bottom: var(--border-width) solid var(--background-modifier-border);
+  border-top: 0;
+}
+
+.bases-utilities-controls[hidden] {
+  display: none;
+}
+
+.bases-utilities-button {
+  flex: 0 0 auto;
+}
+
+.bases-utilities-button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.bases-utilities-status {
+  font-size: var(--font-ui-smaller);
+  min-width: 15em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.bases-thead .bases-td.bases-utilities-column-search-active {
+  background: var(--background-modifier-hover);
+  box-shadow: inset 0 -2px 0 var(--interactive-accent);
+}
+
+.bases-utilities-column-search-indicator {
+  color: var(--interactive-accent);
+  display: flex;
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: var(--size-2-2);
+  pointer-events: none;
+}
+
+.bases-utilities-column-search-indicator svg {
+  height: var(--icon-xs);
+  width: var(--icon-xs);
+}
+
+.bases-utilities-search-popover {
+  background: var(--background-primary);
+  border: var(--border-width) solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-s);
+  color: var(--text-normal);
+  min-width: 260px;
+  padding: var(--size-4-3);
+  position: fixed;
+  z-index: var(--layer-popover);
+}
+
+.bases-utilities-search-title {
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--size-2-2);
+}
+
+.bases-utilities-search-input-row {
+  align-items: center;
+  display: flex;
+  position: relative;
+}
+
+.bases-utilities-search-icon {
+  color: var(--text-muted);
+  display: flex;
+  left: var(--size-4-2);
+  pointer-events: none;
+  position: absolute;
+}
+
+.bases-utilities-search-icon svg {
+  height: var(--icon-s);
+  width: var(--icon-s);
+}
+
+.bases-utilities-search-input {
+  padding-left: calc(var(--icon-s) + var(--size-4-3)) !important;
+  padding-right: calc(var(--icon-s) + var(--size-4-3)) !important;
+  width: 100%;
+}
+
+.bases-utilities-search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.bases-utilities-search-clear {
+  position: absolute;
+  right: var(--size-2-1);
+}
+
+.bases-utilities-search-suggestions {
+  border-top: var(--border-width) solid var(--background-modifier-border);
+  margin: var(--size-2-3) calc(var(--size-4-3) * -1) calc(var(--size-4-3) * -1);
+  max-height: 240px;
+  overflow-y: auto;
+  padding: var(--size-2-2);
+}
+
+.bases-utilities-search-suggestions[hidden] {
+  display: none;
+}
+
+.bases-utilities-search-suggestion {
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  color: var(--text-normal);
+  cursor: pointer;
+  display: block;
+  font-size: var(--font-ui-small);
+  overflow: hidden;
+  padding: var(--size-2-2) var(--size-4-2);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.bases-utilities-search-suggestion:hover,
+.bases-utilities-search-suggestion.is-selected {
+  background: var(--background-modifier-hover);
+}
+
+.bases-view.bases-utilities-table-limited .bases-table-container {
+  flex: 0 1 auto;
+  height: var(--bases-utilities-table-height) !important;
+  max-height: var(--bases-utilities-table-height) !important;
+  min-height: 0 !important;
+  overflow-y: hidden !important;
+}
+
+@media (max-width: 600px) {
+  .bases-utilities-controls {
+    flex-wrap: wrap;
+  }
+
+  .bases-utilities-status {
+    min-width: 11em;
+  }
+}
